@@ -1,83 +1,102 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'balloon_component.dart';
 
 class AnimatedBalloonWidget extends StatefulWidget {
   final double initialX;
   final Duration duration;
+  final Color color;
 
   const AnimatedBalloonWidget({
     super.key,
     this.initialX = 0.0,
     this.duration = const Duration(seconds: 10),
+    this.color = Colors.red,
   });
 
   @override
-  _AnimatedBalloonWidgetState createState() => _AnimatedBalloonWidgetState();
+  State<AnimatedBalloonWidget> createState() => _AnimatedBalloonWidgetState();
 }
 
 class _AnimatedBalloonWidgetState extends State<AnimatedBalloonWidget> with TickerProviderStateMixin {
-  late AnimationController _controllerFloat;
-  late AnimationController _controllerPulse;
-  late Animation<double> _animationFloatUp;
-  late Animation<double> _animationRotate;
-  late Animation<double> _animationPulse;
-  late Animation<double> _animationDrift;
+  late AnimationController controllerFloat;
+  late AnimationController controllerPulse;
+  late Animation<double> animationFloatUp;
+  late Animation<double> animationRotate;
+  late Animation<double> animationPulse;
+  late Animation<double> animationDrift;
 
-  double _dragOffset = 0.0;
-  bool _isBurst = false;
+  final AudioPlayer audioPlayer = AudioPlayer();
+  double dragOffset = 0.0;
+  double scaleFactor = 1.0;
+  bool isBurst = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Controller for floating up and drifting
-    _controllerFloat = AnimationController(duration: widget.duration, vsync: this);
-
-    // Controller for pulsating effect
-    _controllerPulse = AnimationController(
+    controllerFloat = AnimationController(duration: widget.duration, vsync: this);
+    controllerPulse = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
 
-    // Easing and Curve Improvement: Using Curves.easeInOutSine for natural floating
-    _animationFloatUp = Tween(begin: 1.0, end: -0.2).animate(
-      CurvedAnimation(parent: _controllerFloat, curve: Curves.easeInOutSine),
+    // Easing and Curve Improvement
+    animationFloatUp = Tween(begin: 1.1, end: -0.3).animate(
+      CurvedAnimation(parent: controllerFloat, curve: Curves.easeInOutSine),
     );
 
-    // Rotation Animation: Slight rotation as it moves up
-    _animationRotate = Tween(begin: -0.05, end: 0.05).animate(
-      CurvedAnimation(parent: _controllerFloat, curve: Curves.easeInOutQuad),
+    // Rotation Animation
+    animationRotate = Tween(begin: -0.05, end: 0.05).animate(
+      CurvedAnimation(parent: controllerFloat, curve: Curves.easeInOutQuad),
     );
 
-    // Horizontal Drift Animation
-    _animationDrift = Tween(begin: -20.0, end: 20.0).animate(
-      CurvedAnimation(parent: _controllerFloat, curve: Curves.easeInOutSine),
+    animationDrift = Tween(begin: -20.0, end: 20.0).animate(
+      CurvedAnimation(parent: controllerFloat, curve: Curves.easeInOutSine),
     );
 
-    // Pulse Animation: Subtle size change
-    _animationPulse = Tween(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _controllerPulse, curve: Curves.easeInOut),
+    // Pulse Animation
+    animationPulse = Tween(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: controllerPulse, curve: Curves.easeInOut),
     );
 
-    // Sequential Animations: Listen for completion
-    _controllerFloat.addStatusListener((status) {
+    controllerFloat.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        setState(() {
-          // You could trigger a 'burst' or 'float away' here
-          // For now, let's just reverse or reset
-          // _controllerFloat.reverse();
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) controllerFloat.forward(from: 0.0);
         });
       }
     });
 
-    _controllerFloat.forward();
+    controllerFloat.forward();
+    _preloadSound();
+  }
+
+  Future<void> _preloadSound() async {
+    try {
+      await audioPlayer.setSource(AssetSource('sounds/pop.mp3'));
+    } catch (e) {
+      debugPrint("Preload error: $e");
+    }
   }
 
   @override
   void dispose() {
-    _controllerFloat.dispose();
-    _controllerPulse.dispose();
+    controllerFloat.dispose();
+    controllerPulse.dispose();
+    audioPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _playPopSound() async {
+    try {
+      debugPrint("Attempting to play sound: sounds/pop.mp3");
+      await audioPlayer.stop();
+      await audioPlayer.play(AssetSource('sounds/pop.mp3'));
+      debugPrint("Sound play command sent");
+    } catch (e) {
+      debugPrint("Sound error: $e");
+    }
   }
 
   @override
@@ -86,73 +105,35 @@ class _AnimatedBalloonWidgetState extends State<AnimatedBalloonWidget> with Tick
     double screenWidth = MediaQuery.of(context).size.width;
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_controllerFloat, _controllerPulse]),
+      animation: Listenable.merge([controllerFloat, controllerPulse]),
       builder: (context, child) {
-        if (_isBurst) return const SizedBox.shrink();
+        if (isBurst) return const SizedBox.shrink();
 
         return Positioned(
-          bottom: screenHeight * _animationFloatUp.value,
-          left: (screenWidth / 2) - 50 + widget.initialX + _animationDrift.value + _dragOffset,
+          bottom: screenHeight * animationFloatUp.value,
+          left: (screenWidth / 2) - 50 + widget.initialX + animationDrift.value + dragOffset,
           child: GestureDetector(
-            // Interaction: Drag to move
-            onPanUpdate: (details) {
+            // Interaction: Drag and Pinch
+            onScaleUpdate: (details) {
               setState(() {
-                _dragOffset += details.delta.dx;
+                dragOffset += details.focalPointDelta.dx;
+                scaleFactor = details.scale.clamp(0.5, 2.0);
               });
             },
             onDoubleTap: () {
               setState(() {
-                _isBurst = true; // Sequential: Burst on double tap
+                isBurst = true;
               });
-              // Sound Effects: Placeholder for sound logic
-              // print("Pop sound!");
+              _playPopSound();
             },
             child: Transform.rotate(
-              angle: _animationRotate.value,
+              angle: animationRotate.value,
               child: Transform.scale(
-                scale: _animationPulse.value,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Balloon Shadow: Subtle shadow for realistic feel
-                    Container(
-                      height: 120,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 20,
-                            offset: const Offset(10, 20),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Balloon Texture: Applying a gradient texture using ShaderMask
-                    ShaderMask(
-                      shaderCallback: (rect) {
-                        return const RadialGradient(
-                          center: Alignment(-0.3, -0.3),
-                          radius: 0.8,
-                          colors: [Colors.white70, Colors.transparent],
-                          stops: [0.0, 1.0],
-                        ).createShader(rect);
-                      },
-                      blendMode: BlendMode.srcOver,
-                      child: Image.asset(
-                        'assets/images/BeginningGoogleFlutter-Balloon.png',
-                        height: 150,
-                        width: 100,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.location_on,
-                          size: 100,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
-                  ],
+                scale: animationPulse.value * scaleFactor,
+                child: Balloon(
+                  color: widget.color,
+                  width: 100,
+                  height: 150,
                 ),
               ),
             ),

@@ -28,60 +28,54 @@ class BalloonPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    // 1. Define dimensions
+    final double bodyHeight = size.height * 0.8;
+    final Rect bodyRect = Rect.fromLTWH(0, 0, size.width, bodyHeight);
+
+    // 2. Setup the Paint for the balloon body (with a simple Radial Gradient)
+    final Paint bodyPaint = Paint()
       ..shader = RadialGradient(
         center: const Alignment(-0.3, -0.3),
-        radius: 0.8,
-        colors: [
-          Colors.white.withOpacity(0.4),
-          color,
-          color.withOpacity(0.8),
-        ],
-        stops: const [0.0, 0.6, 1.0],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.8));
+        radius: 0.7,
+        colors: [Colors.white.withOpacity(0.3), color],
+      ).createShader(bodyRect);
 
-    // Draw the main balloon body (oval)
-    final bodyPath = Path();
-    bodyPath.addOval(Rect.fromLTWH(0, 0, size.width, size.height * 0.8));
+    // 3. Draw the Balloon Body (Oval) and Shadow
+    final Path bodyPath = Path()..addOval(bodyRect);
+    canvas.drawShadow(bodyPath, Colors.black54, 8, true);
+    canvas.drawPath(bodyPath, bodyPaint);
 
-    // Draw subtle shadow for the balloon body
-    canvas.drawShadow(bodyPath, Colors.black, 10, true);
-    canvas.drawPath(bodyPath, paint);
-
-    // Draw the knot at the bottom
-    final knotPaint = Paint()..color = color.withOpacity(0.9);
-    final knotPath = Path();
-    knotPath.moveTo(size.width * 0.45, size.height * 0.8);
-    knotPath.lineTo(size.width * 0.55, size.height * 0.8);
-    knotPath.lineTo(size.width * 0.6, size.height * 0.85);
-    knotPath.lineTo(size.width * 0.4, size.height * 0.85);
+    // 4. Draw the Knot (Small Triangle at the bottom)
+    final Paint knotPaint = Paint()..color = color;
+    final Path knotPath = Path();
+    knotPath.moveTo(size.width * 0.45, bodyHeight);
+    knotPath.lineTo(size.width * 0.55, bodyHeight);
+    knotPath.lineTo(size.width * 0.5, bodyHeight + 10);
     knotPath.close();
     canvas.drawPath(knotPath, knotPaint);
 
-    // Draw the string
-    final stringPaint = Paint()
-      ..color = Colors.white70
+    // 5. Draw the String (Simple curved line)
+    final Paint stringPaint = Paint()
+      ..color = Colors.black38
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
-    final stringPath = Path();
-    stringPath.moveTo(size.width / 2, size.height * 0.85);
+    final Path stringPath = Path();
+    stringPath.moveTo(size.width * 0.5, bodyHeight + 10);
     stringPath.quadraticBezierTo(
-      size.width / 2 + 10, size.height * 0.92,
-      size.width / 2 - 5, size.height,
+      size.width * 0.6, bodyHeight + 30,
+      size.width * 0.5, size.height,
     );
     canvas.drawPath(stringPath, stringPaint);
 
-    // Highlight/Glare
-    final highlightPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
-      ..style = PaintingStyle.fill;
+    // 6. Draw a Highlight (Glossy effect)
+    final Paint highlightPaint = Paint()..color = Colors.white.withOpacity(0.3);
     canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.2, size.height * 0.15, size.width * 0.2, size.height * 0.1),
+      Rect.fromLTWH(size.width * 0.2, size.height * 0.1, size.width * 0.2, size.height * 0.1),
       highlightPaint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

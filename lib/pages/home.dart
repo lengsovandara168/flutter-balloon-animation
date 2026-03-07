@@ -25,15 +25,17 @@ class HomeScreen extends StatelessWidget {
         ),
         child: const Stack(
           children: <Widget>[
-            // Background Animation: Moving clouds
+            // Background Animation: Moving clouds and birds
             CloudWidget(top: 50, duration: Duration(seconds: 20)),
-            CloudWidget(top: 150, duration: Duration(seconds: 15)),
-            CloudWidget(top: 250, duration: Duration(seconds: 25)),
+            BirdWidget(top: 100),
+            CloudWidget(top: 180, duration: Duration(seconds: 15)),
+            BirdWidget(top: 300),
+            CloudWidget(top: 280, duration: Duration(seconds: 25)),
 
-            // Multiple Balloons with different start positions and durations
-            AnimatedBalloonWidget(initialX: -80, duration: Duration(seconds: 12)),
-            AnimatedBalloonWidget(initialX: 20, duration: Duration(seconds: 10)),
-            AnimatedBalloonWidget(initialX: 90, duration: Duration(seconds: 14)),
+            // Multiple Balloons with slightly varied animations
+            AnimatedBalloonWidget(initialX: -100, duration: Duration(seconds: 12)),
+            AnimatedBalloonWidget(initialX: 0, duration: Duration(seconds: 10)),
+            AnimatedBalloonWidget(initialX: 100, duration: Duration(seconds: 14)),
 
             // Interaction hint
             Positioned(
@@ -42,7 +44,8 @@ class HomeScreen extends StatelessWidget {
               right: 0,
               child: Center(
                 child: Text(
-                  'Drag balloons or double tap to burst!',
+                  'Drag to move, Pinch to resize, Double tap to burst!',
+                  textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
                 ),
               ),
