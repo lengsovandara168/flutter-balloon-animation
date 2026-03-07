@@ -33,9 +33,10 @@ class HomeScreen extends StatelessWidget {
             CloudWidget(top: 280, duration: Duration(seconds: 25)),
 
             // Multiple Balloons with slightly varied animations
-            AnimatedBalloonWidget(initialX: -100, duration: Duration(seconds: 12)),
-            AnimatedBalloonWidget(initialX: 0, duration: Duration(seconds: 10)),
-            AnimatedBalloonWidget(initialX: 100, duration: Duration(seconds: 14)),
+            AnimatedBalloonWidget(initialX: -120, duration: Duration(seconds: 12), color: Colors.red),
+            AnimatedBalloonWidget(initialX: -40, duration: Duration(seconds: 10), color: Colors.yellow),
+            AnimatedBalloonWidget(initialX: 40, duration: Duration(seconds: 14), color: Colors.green),
+            AnimatedBalloonWidget(initialX: 120, duration: Duration(seconds: 8), color: Colors.purple),
 
             // Interaction hint
             Positioned(
