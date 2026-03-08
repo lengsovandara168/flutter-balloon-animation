@@ -59,7 +59,8 @@ class _BirdWidgetState extends State<BirdWidget> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 5), vsync: this)..repeat();
+    // Decreased speed by increasing duration to 10 seconds
+    _controller = AnimationController(duration: const Duration(seconds: 10), vsync: this)..repeat();
     _animation = Tween(begin: 500.0, end: -100.0).animate(_controller);
   }
 

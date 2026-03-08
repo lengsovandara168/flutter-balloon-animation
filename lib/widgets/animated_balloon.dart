@@ -27,8 +27,11 @@ class _AnimatedBalloonWidgetState extends State<AnimatedBalloonWidget> with Tick
   late Animation<double> animationDrift;
 
   final AudioPlayer audioPlayer = AudioPlayer();
-  double dragOffset = 0.0;
-  double scaleFactor = 1.0;
+
+  // State for interaction
+  Offset _dragOffset = Offset.zero;
+  double _scaleFactor = 1.0;
+  double _baseScale = 1.0;
   bool isBurst = false;
 
   @override
@@ -41,30 +44,27 @@ class _AnimatedBalloonWidgetState extends State<AnimatedBalloonWidget> with Tick
       vsync: this,
     )..repeat(reverse: true);
 
-    // Easing and Curve Improvement
     animationFloatUp = Tween(begin: 1.1, end: -0.3).animate(
+      CurvedAnimation(parent: controllerFloat, curve: Curves.easeInOutBack),
+    );
+
+    animationRotate = Tween(begin: -0.15, end: 0.15).animate(
       CurvedAnimation(parent: controllerFloat, curve: Curves.easeInOutSine),
     );
 
-    // Rotation Animation
-    animationRotate = Tween(begin: -0.05, end: 0.05).animate(
-      CurvedAnimation(parent: controllerFloat, curve: Curves.easeInOutQuad),
-    );
-
-    animationDrift = Tween(begin: -20.0, end: 20.0).animate(
+    animationDrift = Tween(begin: -40.0, end: 40.0).animate(
       CurvedAnimation(parent: controllerFloat, curve: Curves.easeInOutSine),
     );
 
-    // Pulse Animation
-    animationPulse = Tween(begin: 1.0, end: 1.05).animate(
+    animationPulse = Tween(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: controllerPulse, curve: Curves.easeInOut),
     );
 
     controllerFloat.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) controllerFloat.forward(from: 0.0);
-        });
+        if (mounted && !isBurst) {
+          controllerFloat.forward(from: 0.0);
+        }
       }
     });
 
@@ -90,10 +90,8 @@ class _AnimatedBalloonWidgetState extends State<AnimatedBalloonWidget> with Tick
 
   Future<void> _playPopSound() async {
     try {
-      debugPrint("Attempting to play sound: sounds/pop.mp3");
       await audioPlayer.stop();
       await audioPlayer.play(AssetSource('sounds/pop.mp3'));
-      debugPrint("Sound play command sent");
     } catch (e) {
       debugPrint("Sound error: $e");
     }
@@ -110,14 +108,24 @@ class _AnimatedBalloonWidgetState extends State<AnimatedBalloonWidget> with Tick
         if (isBurst) return const SizedBox.shrink();
 
         return Positioned(
-          bottom: screenHeight * animationFloatUp.value,
-          left: (screenWidth / 2) - 50 + widget.initialX + animationDrift.value + dragOffset,
+          // Vertical movement combines floating animation and drag
+          bottom: (screenHeight * animationFloatUp.value) - _dragOffset.dy,
+          // Horizontal movement combines initial offset, drift animation, and drag
+          left: (screenWidth / 2) - 50 + widget.initialX + animationDrift.value + _dragOffset.dx,
           child: GestureDetector(
-            // Interaction: Drag and Pinch
+            onScaleStart: (details) {
+              _baseScale = _scaleFactor;
+            },
             onScaleUpdate: (details) {
               setState(() {
-                dragOffset += details.focalPointDelta.dx;
-                scaleFactor = details.scale.clamp(0.5, 2.0);
+                // Handle dragging (moving the focal point)
+                _dragOffset += details.focalPointDelta;
+
+                // Handle pinching (scaling)
+                // details.scale is 1.0 if not pinching
+                if (details.scale != 1.0) {
+                  _scaleFactor = (_baseScale * details.scale).clamp(0.5, 5.0);
+                }
               });
             },
             onDoubleTap: () {
@@ -129,11 +137,12 @@ class _AnimatedBalloonWidgetState extends State<AnimatedBalloonWidget> with Tick
             child: Transform.rotate(
               angle: animationRotate.value,
               child: Transform.scale(
-                scale: animationPulse.value * scaleFactor,
+                scale: animationPulse.value * _scaleFactor,
                 child: Balloon(
                   color: widget.color,
                   width: 100,
                   height: 150,
+                  shadowIntensity: (1 - animationFloatUp.value).clamp(0, 1) * 15,
                 ),
               ),
             ),
